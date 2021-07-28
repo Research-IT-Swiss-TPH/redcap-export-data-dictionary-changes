@@ -34,25 +34,12 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     */
     private function renderModule() {
         
-        $this->includeJavascript();
-        
-        
+        $this->includeJavascript();                
         $this->includeCSS();
-        
-
-        print '<p class="export-data-dictionary-changes">'.$this->helloFrom_exportDataDictionaryChanges().'<p>';
 
     }
 
-    public function helloFrom_exportDataDictionaryChanges() {
-
-        
-        return $this->tt("hello_from").' '.$this->moduleName;
-        
-
-    }
-
-    
+   
    /**
     * Include JavaScript files
     *
