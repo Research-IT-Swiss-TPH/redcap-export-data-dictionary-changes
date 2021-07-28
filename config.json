@@ -29,7 +29,59 @@
 
     "system-settings": [],
 
-    "project-settings": [],
+    "project-settings": [
+        {
+            "key": "enable-download",
+            "type": "dropdown",
+            "name": "<b>Automatic Downloads</b><br>Enable automatic Downloads? <br><i>An automatic download will start after approval, if Data Dictionary Export was requested during submission.</i>",
+            "choices": [
+				{
+					"name" : "Disabled",
+					"value" : "0"
+				},
+				{
+					"name" : "Automatic & Manual Approvals",
+					"value" : "1"
+				},
+				{
+					"name" : "Automatic approvals",
+					"value" : "2"
+				},
+				{
+					"name" : "Manual approvals",
+					"value" : "3"
+				}
+            ]            
+        },
+        {
+            "key": "enable-mail",
+            "type": "dropdown",
+            "name": "<b>Automatic Emails</b><br>Enable automatic Emails? <br><i>An automatic email will be sent to the submission author, if Data Dictionary Export was request during submission.</i>",
+            "choices": [
+				{
+					"name" : "Disabled",
+					"value" : "0"
+				},
+				{
+					"name" : "Automatic & Manual Approvals",
+					"value" : "1"
+				},
+				{
+					"name" : "Automatic approvals",
+					"value" : "2"
+				},
+				{
+					"name" : "Manual approvals",
+					"value" : "3"
+				}
+            ]
+        },
+        {
+            "key": "is-active",
+            "type": "checkbox",            
+            "hidden": true
+        }
+    ],
 
     "crons": [],
 
