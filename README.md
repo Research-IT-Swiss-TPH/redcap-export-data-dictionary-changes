@@ -1,5 +1,5 @@
 # Export Data Dictionary Changes
-Another module made with create-redcap-module.
+Export recent changes of a REDCap Data Dictionary through automated Downloads or Emails.
 
 ## Setup
 
@@ -9,28 +9,6 @@ Install the module from REDCap module repository and enable over Control Center.
 
 - Setting 1: Do this for that
 - Setting 2: Do this for that
-
-## Testing
-
-**Testing Requirements**.
-- [Composer](https://getcomposer.org/)
-
-1. Require phpunit within your module folder `/redcap/modules/export_data_dictionary_changesV1.0.0` and check if it is running:
-
-```bash
-   composer require --dev phpunit/phpunit
-``` 
-
-```bash
-   ./vendor/bin/phpunit --version
-``` 
-
-2. Run your tests that are written within your `/tests` folder:
-
-```bash
-    ./vendor/bin/phpunit tests
-``` 
-Read more about PHP Unit Testing in the official [PHPUnit Manual](https://phpunit.readthedocs.io/en/9.5/index.html).
 
 ## Roadmap
 
