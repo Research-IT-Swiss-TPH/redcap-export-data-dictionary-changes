@@ -31,7 +31,7 @@
 
     "project-settings": [
         {
-            "key": "enable-download",
+            "key": "has-export-download",
             "type": "dropdown",
             "name": "<b>Automatic Downloads</b><br>Enable automatic Downloads? <br><i>An automatic download will start after approval, if Data Dictionary Export was requested during submission.</i>",
             "choices": [
@@ -54,7 +54,7 @@
             ]            
         },
         {
-            "key": "enable-mail",
+            "key": "has-export-mail",
             "type": "dropdown",
             "name": "<b>Automatic Emails</b><br>Enable automatic Emails? <br><i>An automatic email will be sent to the submission author, if Data Dictionary Export was request during submission.</i>",
             "choices": [
@@ -77,7 +77,7 @@
             ]
         },
         {
-            "key": "is-active",
+            "key": "is-export-active",
             "type": "checkbox",            
             "hidden": true
         }
