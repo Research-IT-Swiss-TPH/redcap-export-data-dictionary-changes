@@ -3,6 +3,11 @@
 // Set the namespace defined in your config file
 namespace STPH\exportDataDictionaryChanges;
 
+//  Autoload composer files if in dev environment and composer installed
+if( $GLOBALS["is_development_server"] && file_exists("vendor/autoload.php")){
+    require 'vendor/autoload.php';
+}
+
 
 // Declare your module class, which must extend AbstractExternalModule 
 class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModule {
