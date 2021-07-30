@@ -4,7 +4,6 @@
 namespace STPH\exportDataDictionaryChanges;
 
 
-
 // Declare your module class, which must extend AbstractExternalModule 
 class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModule {
 
@@ -36,6 +35,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     *
     */
     public function redcap_every_page_top($project_id = null) {
+
+        $this->develop();
 
         $this->setSettings();
 
@@ -231,7 +232,108 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             array( "state" => $value )
         );
 
-    }    
+    }
 
-    
+    /**
+     * Generate Difference Report of new and old Data Dictionaries
+     * 
+     * 
+     * @since 1.0.0
+     */  
+    private function generateDiffReport() {
+
+        $diff = array();
+        $new_mod_fields = array();
+        $deleted_fields = array();
+
+        //  Get Data Dictionary of current state and before changes
+        //  Current
+        $currentDataDictionary = \REDCap::getDataDictionary("array");
+
+        //  Before: Get all project revisions and pick last one`s pr_Id to generate Data Dictionary
+        $revisions = $this->getRevisions();
+        $beforeRevision = end($revisions);
+        dump($beforeRevision);
+        $beforeDataDictionary = \MetaData::getDataDictionary("array", true, array(), array(), false, false, $beforeRevision->pr_id);
+
+        // Check if there are new, modified or deleted fields
+        // Check for new and modified fields
+        foreach( $currentDataDictionary as $field => $metadata )
+        {
+
+            //  Check for new fields 
+            if ( !isset($beforeDataDictionary[$field]) ) {
+                $metadata["change_type"] = "added";
+                $metadata["change_history"] = null;                
+
+                $new_fields[$field] = $metadata;
+            }
+            //  Check for modified fields
+            else if( $metadata !== $beforeDataDictionary[$field] ) {
+
+                $changeHistory = [];
+                foreach ($metadata as  $i => $attr ) {
+
+                    $attr = strip_tags($attr);
+
+                    $old_value = strip_tags( $beforeDataDictionary[$field][$i] );
+                    
+                    if ($attr != $old_value)
+                    {
+                        $value = $attr ? $attr : "";
+                        $old_value = $old_value ? $old_value : "";
+                        $changeHistory[ $i ] = $old_value;
+                    }
+                }
+
+                $metadata["change_type"] = "modified";
+                $metadata["change_history"] = $changeHistory;
+                $mod_fields[$field] = $metadata;
+            }
+        }
+
+        //  Check for deleted fields 
+        foreach ($beforeDataDictionary as $field => $metadata) {
+             if ( !isset($currentDataDictionary[$field]) ) {
+
+                $changeHistory = [];
+                foreach ($metadata as  $i => $attr ) {
+
+                    if($attr) {
+                        $changeHistory[ $i ] = $attr;
+                    }
+                   
+                }
+
+                $metadata["change_type"] = "deleted";
+                $metadata["change_history"] = $changeHistory;
+                $deleted_fields[$field] = $metadata;
+            }
+        }
+
+        $diff = array_merge( (array)$new_fields, (array) $mod_fields, (array) $deleted_fields);
+        dump($diff);
+
+    }
+
+    private function getRevisions() {
+
+        $pid = $_GET["pid"];
+        $previous_versions = array();
+        $sql = "select p.pr_id, p.ts_approved,p.ts_req_approval, p.ui_id_requester, p.ui_id_approver
+                from redcap_metadata_prod_revisions p                     
+                where p.project_id = $pid and p.ts_approved is not null order by p.pr_id";
+
+        $revisions = [];                    
+
+        if ($result = $this->query($sql, [])) {
+            while ($row = $result->fetch_object()) {
+                $revisions[] = $row;
+            }
+            $result->close();
+        }
+        
+        return $revisions;
+    }
+
 }
