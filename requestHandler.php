@@ -13,7 +13,7 @@ elseif($_REQUEST['action'] == 'getActiveState') {
     $module->getExportActiveState();
 }
 elseif($_REQUEST['action'] == 'download') {
-    //$module->getAutoDownload();
+    $module->getDownload();
 }
 
 else {

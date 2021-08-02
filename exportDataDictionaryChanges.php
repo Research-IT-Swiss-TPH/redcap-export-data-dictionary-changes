@@ -240,9 +240,32 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
+     * Gets CSV download
+     * Called from RequestHandler via Ajax
+     * 
+     * @since 1.0.0
+     */    
+    public function getDownload() {
+
+    }
+
+    public function develop() {
+
+        if(isset($_GET["pid"])){
+
+           $diff = $this->generateDiffReport();  // add user id, data 
+           dump($diff);
+           //   save to cache
+           //   generate CSV
+           //   processDownload
+           //   processEmail
+        }
+
+    }
+
+    /**
      * Generate Difference Report of new and old Data Dictionaries
-     * 
-     * 
+     * @return Array Differences merged from new, modified and deleted fields.
      * @since 1.0.0
      */  
     private function generateDiffReport() {
@@ -251,37 +274,46 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $new_mod_fields = array();
         $deleted_fields = array();
 
-        //  Get Data Dictionary of current state and before changes
-        //  Current
+        //  Get latest revision (needed for previous Data Dictionary State)
+        $revisions = $this->getRevisions();
+        $lastRevision = end($revisions);
+
+        //  Get Data Dictionary of current state
         $currentDataDictionary = \REDCap::getDataDictionary("array");
 
-        //  Before: Get all project revisions and pick last one`s pr_Id to generate Data Dictionary
-        $revisions = $this->getRevisions();
-        $beforeRevision = end($revisions);
-        dump($beforeRevision);
-        $beforeDataDictionary = \MetaData::getDataDictionary("array", true, array(), array(), false, false, $beforeRevision->pr_id);
+        //  Get Data Dictionary of previous state 
+        $lastDataDictionary = \MetaData::getDataDictionary("array", true, array(), array(), false, false, $lastRevision->pr_id);
+
+        //  Get date when change request has been approved
+        $changeDate = $lastRevision->ts_approved;
+
+        //  Get username from user id that has authored the change request
+        $changeAuthor = $this->getUsername($lastRevision->ui_id_requester);
 
         // Check if there are new, modified or deleted fields
         // Check for new and modified fields
         foreach( $currentDataDictionary as $field => $metadata )
         {
+            //  ADDED
+            if ( !isset($lastDataDictionary[$field]) ) {
 
-            //  Check for new fields 
-            if ( !isset($beforeDataDictionary[$field]) ) {
+                $metadata["change_date"] = $changeDate;
+                $metadata["change_author"] = $changeAuthor;
+
                 $metadata["change_type"] = "added";
                 $metadata["change_history"] = null;                
 
                 $new_fields[$field] = $metadata;
             }
-            //  Check for modified fields
-            else if( $metadata !== $beforeDataDictionary[$field] ) {
+            //  MODIFIED
+            else if( $metadata !== $lastDataDictionary[$field] ) {
 
                 $changeHistory = [];
                 foreach ($metadata as  $i => $attr ) {
 
                     $attr = strip_tags($attr);
 
-                    $old_value = strip_tags( $beforeDataDictionary[$field][$i] );
+                    $old_value = strip_tags( $lastDataDictionary[$field][$i] );
                     
                     if ($attr != $old_value)
                     {
@@ -291,15 +323,23 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                     }
                 }
 
+                $metadata["change_date"] = $changeDate;
+                $metadata["change_author"] = $changeAuthor;
+
                 $metadata["change_type"] = "modified";
                 $metadata["change_history"] = $changeHistory;
+
+
+
                 $mod_fields[$field] = $metadata;
             }
         }
 
         //  Check for deleted fields 
-        foreach ($beforeDataDictionary as $field => $metadata) {
-             if ( !isset($currentDataDictionary[$field]) ) {
+        foreach ($lastDataDictionary as $field => $metadata) {
+
+            // DELETED 
+            if ( !isset($currentDataDictionary[$field]) ) {
 
                 $changeHistory = [];
                 foreach ($metadata as  $i => $attr ) {
@@ -310,17 +350,28 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                    
                 }
 
+                $metadata["change_date"] = $changeDate;
+                $metadata["change_author"] = $changeAuthor;
+
                 $metadata["change_type"] = "deleted";
                 $metadata["change_history"] = $changeHistory;
+                
+
                 $deleted_fields[$field] = $metadata;
             }
         }
 
+        //  Merge all changes
         $diff = array_merge( (array)$new_fields, (array) $mod_fields, (array) $deleted_fields);
-        dump($diff);
+        return $diff;
 
     }
 
+    /**
+     * Get all revisions for the current project
+     * @return Array Revisions that match the given project id.
+     * @since 1.0.0
+     */  
     private function getRevisions() {
 
         $pid = $_GET["pid"];
@@ -339,6 +390,26 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         }
         
         return $revisions;
+    }
+
+    /**
+     * Get username from given user id
+     * @param String $ui_ud The user id of a REDCap user.
+     * @return String The username. Returns "" in event of error.
+     * @since 1.0.0
+     */      
+    private function getUsername($ui_id)
+    {
+        $username = "";
+        $sql = "select username from redcap_user_information where ui_id = ?";                
+        if($result = $this->query($sql, $ui_id))        
+        {
+            $username = $result->fetch_object()->username;
+            $result->close();
+        }
+
+        return $username;
+
     }
 
 }
