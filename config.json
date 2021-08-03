@@ -80,6 +80,11 @@
             "key": "is-export-active",
             "type": "checkbox",            
             "hidden": true
+        },
+        {
+            "key": "storage",
+            "type": "json",
+            "hidden": true
         }
     ],
 

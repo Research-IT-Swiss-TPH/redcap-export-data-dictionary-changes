@@ -77,11 +77,14 @@ STPH_exportDataDictionaryChanges.setStateMsg = function(response) {
 
 //  Initialize Download for Automatic Appprovals
 STPH_exportDataDictionaryChanges.initDownloadForAutomatic = function() {
-
     //  Append to "Changes Were Made Automatically" dialog on .ui-dialog-buttonpane element
-    $( "#autochangessaved" ).on( "dialogopen", function( event, ui ) {
-        appendDownload($(".ui-dialog-buttonpane"));
-    });    
+
+    console.log($("#autochangessaved"));
+
+    $( "#autochangessaved" ).on( "dialogopen", function( event, ui ) {       
+        STPH_exportDataDictionaryChanges.appendDownload($(".ui-dialog-buttonpane"));
+        //STPH_exportDataDictionaryChanges.callAsyncDownload();
+    });
 }
 
 //  Initialize Download for Manual Appprovals
@@ -89,14 +92,52 @@ STPH_exportDataDictionaryChanges.initDownloadForManual = function() {
     //  Append to "Project Changes Committed / User Notified" page on #center element
     var target = $("#center");
     if(target) {
-        appendDownload(target);
+        STPH_exportDataDictionaryChanges.appendDownload(target);
     }
 }
 
 
+STPH_exportDataDictionaryChanges.callAsyncDownload = async function() {
+
+    //  0. Append dl_message to markup
+    console.log('calling');
+    //  1. Get file to download
+    try {
+        //let csv = await STPH_exportDataDictionaryChanges.getDownload();
+        //console.log(csv);
+
+    } catch(err) {
+        alert(err.statusText + " (" + err.status + ")" );
+        console.log("ERROR");
+        console.log(err);
+    }
+
+
+    const result = await STPH_exportDataDictionaryChanges.resolveAfter2Seconds();
+    console.log(result);
+    // expected output: "resolved"
+}
+
+STPH_exportDataDictionaryChanges.resolveAfter2Seconds = function() {
+    return new Promise(resolve => {
+        setTimeout(() => {
+        resolve('resolved');
+        }, 2000);
+    });
+}
+
+STPH_exportDataDictionaryChanges.getDownload = function() {
+    return $.ajax({
+        url: STPH_exportDataDictionaryChanges.requestHandler + "&action=download",
+        type: 'GET'
+    });    
+}
+
+
+
+
 //  Append download markup
 STPH_exportDataDictionaryChanges.appendDownload = function(target) {
-
     //  Append download with counter message to target
     var dl_message = '<div id="adl_msg" style="float:left;line-height:44px;margin-left:15px;font-weight:bold;">Automatic Download is starting in <span id="adl_counter">3</span></div>';                        
     target.append(dl_message);
