@@ -42,6 +42,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
         $this->setup();
 
+        //$this->develop();
+
         //  Check if Export Download or Export Mail are enabled
         if( $this->hasExport ) {
             //  Hook module up
@@ -268,13 +270,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     public function develop() {
 
         if(isset($_GET["pid"])){
-
             $csv = $this->generateCSV();
-            dump($csv);
-
-
-            //   generate CSV
-            //   processDownload
+            dump($csv);           
             //   processEmail
         }
 
@@ -370,7 +367,9 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $changeDate = $lastRevision->ts_approved;
 
         //  Get username from user id that has authored the change request
-        $changeAuthor = $this->getUsername($lastRevision->ui_id_requester);
+        $user = $this->getUserInfo($lastRevision->ui_id_requester);
+        $changeAuthor = $user->username;
+        $authorEmail = $user->user_email;
 
         // Check if there are new, edited or deleted fields
         // Check for new and edited fields
@@ -381,6 +380,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
+                $metadata["author_email"] = $authorEmail;
+
 
                 $metadata["change_type"] = "added";
                 $metadata["change_history"] = null;                
@@ -407,6 +408,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
+                $metadata["author_email"] = $authorEmail;
 
                 $metadata["change_type"] = "edited";
                 $metadata["change_history"] = $changeHistory;
@@ -434,6 +436,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
+                $metadata["author_email"] = $authorEmail;
 
                 $metadata["change_type"] = "deleted";
                 $metadata["change_history"] = $changeHistory;
@@ -475,22 +478,23 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Get username from given user id
+     * Get user from given user id
      * @param String $ui_ud The user id of a REDCap user.
-     * @return String The username. Returns "" in event of error.
+     * @return Object Object of user information with name and email. Returns NULL in event of error.
      * @since 1.0.0
      */      
-    private function getUsername($ui_id)
+    private function getUserInfo($ui_id)
     {
-        $username = "";
-        $sql = "select username from redcap_user_information where ui_id = ?";                
+        $user = NULL;
+
+        $sql = "select username,user_email from redcap_user_information where ui_id = ?";   
         if($result = $this->query($sql, $ui_id))        
         {
-            $username = $result->fetch_object()->username;
+            $user = $result->fetch_object();
             $result->close();
         }
 
-        return $username;
+        return (object) $user;
 
     }
 
