@@ -3,6 +3,9 @@
 // Set the namespace defined in your config file
 namespace STPH\exportDataDictionaryChanges;
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
 //  Autoload composer files if in dev environment and composer installed
 if( $GLOBALS["is_development_server"] && file_exists("vendor/autoload.php")){
     require 'vendor/autoload.php';
@@ -12,6 +15,7 @@ if( $GLOBALS["is_development_server"] && file_exists("vendor/autoload.php")){
 // Declare your module class, which must extend AbstractExternalModule 
 class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModule {
 
+    private $moduleName;
     private $settings = [];
 
     private $hasExport;
@@ -21,8 +25,11 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     private $hasExportMailForAutomatic;
 
     private $hasExportDownloadForManual;
-    private $hasExportMailForManual;
+    private $hasExportMailForManual;    
 
+    //  
+    private $lastRevision;
+    private $user;
 
    /**
     * Constructs the class
@@ -39,23 +46,19 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     *
     */
     public function redcap_every_page_top($project_id = null) {
+        
+        $this->before();
+        $this->run();
 
-        $this->setup();
-
-        //$this->develop();
-
-        //  Check if Export Download or Export Mail are enabled
-        if( $this->hasExport ) {
-            //  Hook module up
-            $this->hookup();
-        }          
     }
 
    /**
-    * Setup module configuration settings
+    * Before Run: Set module configuration settings
     * @since 1.0.0
     */
-    private function setup(){
+    private function before(){
+
+        $this->moduleName = $this->getConfig("name");        
 
         $settingHasExportDownload = $this->getProjectSetting("has-export-download");
         $this->hasExportDownloadForAutomatic = ($settingHasExportDownload == 1 || $settingHasExportDownload == 2) ? true : false;
@@ -73,37 +76,41 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     * Hookup module to process Exports
     * @since 1.0.0
     */
-    private function hookup() {
+    private function run() {
 
-        //  Include basic Javascript
-        $this->includeJavascriptBase();
+        //  Check if Export Download or Export Mail are enabled
+        if( $this->hasExport ) {
 
-        //  Include Switch for toggle Export active state before Submit
-        //  Hook into "Submit Changes" Dialog
-        if(strpos(PAGE, "Design/online_designer.php") !== false ) {
-            $this->includeJavascriptSwitch();
-        }
-        
-        //  Check if Export active state is true
-        if($this->isExportActive) {
+            //  Include basic Javascript
+            $this->includeJavascriptBase();
 
-            //  Process Automatic Approvals
-            //  Hook into "Automatic Changes" Dialog
-            if(strpos(PAGE, "Design/online_designer.php") !== false && isset($_GET['msg']) && $_GET['msg'] == "autochangessaved" ) { 
-                if($this->saveDiffToStorage()){
-                    $this->processExports('automatic');
-                }
-            }            
-            
-            //  Process Manual Approvals
-            //  Hook into "Automatic Changes" Dialog
-            if(strpos(PAGE, "Design/draft_mode_notified.php") !== false && isset($_GET['action']) && $_GET["action"] == "approve" ) {
-                if($this->saveDiffToStorage()){
-                    $this->processExports('manual');
-                }                    
+            //  Include Switch for toggle Export active state before Submit
+            //  Hook into "Submit Changes" Dialog
+            if(strpos(PAGE, "Design/online_designer.php") !== false ) {
+                $this->includeJavascriptSwitch();
             }
+            
+            //  Check if Export active state is true
+            if($this->isExportActive) {
 
-        }
+                //  Process Automatic Approvals
+                //  Hook into "Automatic Changes" Dialog
+                if(strpos(PAGE, "Design/online_designer.php") !== false && isset($_GET['msg']) && $_GET['msg'] == "autochangessaved" ) { 
+                    if($this->saveReport()){
+                        $this->processExports('automatic');
+                    }
+                }            
+                
+                //  Process Manual Approvals
+                //  Hook into "Automatic Changes" Dialog
+                if(strpos(PAGE, "Design/draft_mode_notified.php") !== false && isset($_GET['action']) && $_GET["action"] == "approve" ) {
+                    if($this->saveReport()){
+                        $this->processExports('manual');
+                    }                    
+                }
+
+            }
+        }     
     }
 
    /**
@@ -127,7 +134,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     
             //  Check if Export Email is enabled for Automatic Approvals
             if( $this->hasExportMailForAutomatic ) {
-                //$this->triggerCSVMail();
+                $this->sendMail($approval);
             }
             
         } elseif($approval == 'manual') {
@@ -145,15 +152,16 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
             //  Check if Export Email is enabled for Manual Approvals
             if( $this->hasExportMailForManual ) {
-                //$this->triggerCSVMail(true);
+                $this->sendMail($approval);
             }            
         }
 
     }
  
    /**
-    * Include JavaScript files
+    * Include Base JavaScript files
     *
+    * @since 1.0.0
     */
     private function includeJavascriptBase() {
         ?>        
@@ -167,7 +175,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Includes Javascript for Auto Download Switch 
+     * Include Javascript for Auto Download Switch 
      * Hooked into "SUBMIT CHANGES FOR REVIEW?" Dialog (#confirm-review) 
      * 
      * @since 1.0.0
@@ -185,7 +193,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Includes Javascript for Export Download
+     * Include Javascript for Export Download
      * Hooked into "SUBMIT CHANGES FOR REVIEW?" Dialog (#confirm-review) 
      * 
      * @since 1.0.0
@@ -212,7 +220,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Gets module configuration setting "active-auto-download" and returns its value in json
+     * Get module configuration setting "active-auto-download" and returns its value in json
      * Called from RequestHandler via Ajax
      * 
      * @since 1.0.0
@@ -226,7 +234,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Toogles module configuration setting "active-auto-download" and returns its value in json
+     * Toogle module configuration setting "active-auto-download" and returns its value in json
      * Called from RequestHandler via Ajax
      * 
      * @since 1.0.0
@@ -248,49 +256,111 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Gets download
+     * Get CSV as File Download
      * Called from RequestHandler via Ajax
      * 
      * @since 1.0.0
      */    
     public function getDownload() {
 
-        $filename = "DataDictionaryChanges_".PROJECT_ID."_".date("Y-m-d_H-i-s").".csv";
+        $filename = $this->getFilename();
 
+        //  Set CSV File Headers
         header('Content-Description: File Transfer');
         header('Content-Type: application/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
-        $fp = fopen('php://output', 'w+');
-        fwrite($fp, $this->generateCSV());
-        fclose($fp);
-        
+        //  Handle file generation
+        try {
+            
+            $fp = fopen('php://output', 'w+');
+            if ( !$fp ) {
+                throw new Exception('File open failed.');
+            }
+
+            if( !fwrite( $fp, $this->generateCSV() )) {
+                throw new Exception('File write failed.');                
+            };
+
+            if( !fclose($fp) ) {
+                throw new Exception('File close failed.');                
+            };
+
+        } catch(Exception $e) {
+            \REDCap::logEvent( $this->moduleName . " - Error: ", $e->getMessage(), null, null, null, PROJECT_ID );
+            http_response_code(500);
+            die("There was an error while preparing the download. Please check the log.");
+        }
     }
 
-    public function develop() {
+    /**
+     * Get filename with Project ID and Date
+     * 
+     * @return String 
+     * @since 1.0.0
+     */        
+    private function getFilename() {
+        return "DataDictionaryChanges_".PROJECT_ID."_".date("Y-m-d_H-i-s").".csv";
+    }
 
-        if(isset($_GET["pid"])){
-            $csv = $this->generateCSV();
-            dump($csv);           
-            //   processEmail
+    /**
+     * Send email to recipient 
+     * 
+     * @param String Mode of approval
+     * @since 1.0.0
+     */          
+    private function sendMail($approval) {
+
+    //Create an instance; passing `true` enables exceptions
+    $mail = new PHPMailer(true);
+    $csv = $this->generateCSV();
+    $filename = $this->getFilename();
+
+        try {
+            // Init
+            $mail = new PHPMailer;
+            $mail->CharSet = 'UTF-8';
+            $mail->isHTML(true);        //Set email format to HTML
+
+
+            // Recipient
+            $mail->setFrom('from@example.com', 'Mailer');
+            $mail->addAddress($this->user->user_email, $this->user->user_firstname . ' ' . $this->user->user_lastname);     //Add a recipient
+
+            // Content
+            $mail->Subject = ucfirst($approval) . " Approval -" . $filename;
+            $mail->Body    = 'This is email has been created automatically by REDCap Module "Export Data Dictionary Changes".<br>If you do not wish to receive this email please edit module configuration "Automatic Emails" for your project!';
+
+            //  Attach CSV from string
+            $mail->AddStringAttachment($csv, $filename, 'base64', 'application/csv');
+
+            //  Send Email finally
+            $mail->send();
+
+        } catch(Exception $e) {
+            \REDCap::logEvent( $this->moduleName, "Message could not be sent. Mailer Error: " . $mail->ErrorInfo, null, null, null, PROJECT_ID );
+            http_response_code(500);
+            die("There was an error while sending the Email. Please check the log.");
         }
 
     }
 
     /**
-     * Generate CSV from difference report
+     * Generate CSV from report
+     * 
      * @return File A CSV file with UTF8 Encoding.
      * @since 1.0.0
      */      
     private function generateCSV(){
+
+        //  Retrieve contents
         $diff = json_decode($this->getProjectSetting("storage"), true);
         $csv = "";
 
+        //  Write headers
         $headers = array_keys( current($diff) );
-
         $csv = implode($headers, ", ") . PHP_EOL;
 
-        //  Write headers
 
         //  Write fields
         foreach ($diff as $key => $row) {
@@ -328,13 +398,27 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
     }
 
-    private function saveDiffToStorage() {
+    /**
+     * Save Report to Storage
+     * This is needed because getDownload is triggered async via AJAX and has no report context
+     * 
+     * @return File A CSV file with UTF8 Encoding.
+     * @since 1.0.0
+     */              
+    private function saveReport() {
+
+        //  Set Last Revision
+        $this->setLastRevision();
+
+        //  Set User Info
+        $this->setUser();
         
-        $diff = $this->generateDiffReport();
+        $report = $this->generateReport();        
+        $this->recipient = $report["email"];
 
         //  Only save diff report to database if there were changes
-        if( !empty($diff) && isset($diff) ) {
-            $this->setProjectSetting("storage", json_encode($diff) );     
+        if( !empty($report) && isset($report) ) {
+            $this->setProjectSetting("storage", json_encode($report) );     
             return true;
         }
 
@@ -343,33 +427,28 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
 
     /**
-     * Generate Difference Report of new and old Data Dictionaries
+     * Get Report of new and old Data Dictionaries Differences
      * @return Array Differences merged from new, edited and deleted fields.
+     * 
      * @since 1.0.0
      */  
-    private function generateDiffReport() {
+    private function generateReport() {
 
-        $diff = array();
+        $report = array();
         $new_mod_fields = array();
         $deleted_fields = array();
-
-        //  Get latest revision (needed for previous Data Dictionary State)
-        $revisions = $this->getRevisions();
-        $lastRevision = end($revisions);
 
         //  Get Data Dictionary of current state
         $currentDataDictionary = \REDCap::getDataDictionary("array");
 
         //  Get Data Dictionary of previous state 
-        $lastDataDictionary = \MetaData::getDataDictionary("array", true, array(), array(), false, false, $lastRevision->pr_id);
+        $lastDataDictionary = \MetaData::getDataDictionary("array", true, array(), array(), false, false, $this->lastRevision->pr_id);
 
         //  Get date when change request has been approved
-        $changeDate = $lastRevision->ts_approved;
+        $changeDate = $this->lastRevision->ts_approved;
 
-        //  Get username from user id that has authored the change request
-        $user = $this->getUserInfo($lastRevision->ui_id_requester);
-        $changeAuthor = $user->username;
-        $authorEmail = $user->user_email;
+        //  Get author username of request
+        $changeAuthor = $this->user->username;
 
         // Check if there are new, edited or deleted fields
         // Check for new and edited fields
@@ -380,7 +459,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
-                $metadata["author_email"] = $authorEmail;
 
 
                 $metadata["change_type"] = "added";
@@ -408,7 +486,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
-                $metadata["author_email"] = $authorEmail;
 
                 $metadata["change_type"] = "edited";
                 $metadata["change_history"] = $changeHistory;
@@ -436,7 +513,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
                 $metadata["change_date"] = $changeDate;
                 $metadata["change_author"] = $changeAuthor;
-                $metadata["author_email"] = $authorEmail;
 
                 $metadata["change_type"] = "deleted";
                 $metadata["change_history"] = $changeHistory;
@@ -447,8 +523,17 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         }
 
         //  Merge all changes
-        $diff = array_merge( (array)$new_fields, (array) $mod_fields, (array) $deleted_fields);
-        return $diff;
+        return array_merge( (array)$new_fields, (array) $mod_fields, (array) $deleted_fields);        
+
+    }
+
+    private function setLastRevision() {
+        
+        //  Get latest revision (needed for previous Data Dictionary State)
+        $revisions = $this->getRevisions();
+        $lastRevision = end($revisions);
+
+        $this->lastRevision = $lastRevision;
 
     }
 
@@ -473,7 +558,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             }
             $result->close();
         }
-        
+
         return $revisions;
     }
 
@@ -483,19 +568,21 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      * @return Object Object of user information with name and email. Returns NULL in event of error.
      * @since 1.0.0
      */      
-    private function getUserInfo($ui_id)
+    private function setUser()
     {
+        $ui_id = $this->lastRevision->ui_id_requester;
         $user = NULL;
 
-        $sql = "select username,user_email from redcap_user_information where ui_id = ?";   
+        $sql = "select username,user_email, user_firstname, user_lastname from redcap_user_information where ui_id = ?";   
         if($result = $this->query($sql, $ui_id))        
         {
             $user = $result->fetch_object();
             $result->close();
         }
 
-        return (object) $user;
-
+        $this->user = (object) $user;
+        
+        return;
     }
 
 }
