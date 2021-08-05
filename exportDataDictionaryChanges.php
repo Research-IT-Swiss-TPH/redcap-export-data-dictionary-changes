@@ -22,6 +22,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     private  $hasExport;
     /** @var bool */
     private $isExportActive;
+    /** @var bool */
+    private $isEmailActive;
 
     /** @var bool */
     private $hasExportDownloadForAutomatic;
@@ -34,7 +36,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     private $hasExportMailForManual;
 
     /** @var bool */
-    private $isPageDesign;
+    private $isPageBase;
     /** @var bool */
     private $isPageApprovedAutomatic;
     /** @var bool */
@@ -64,7 +66,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $this->moduleName = ($this->getConfig())["name"];
 
         //  Page Indicators
-        $this->isPageDesign = false;
+        $this->isPageBase = false;
         $this->isPageApprovedAutomatic = false;
         $this->isPageApprovedManual = false;
 
@@ -85,18 +87,18 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */
     public function redcap_every_page_top($project_id = null) {
         
+        //  Set Project Settings
         $this->initialize();
 
-        if($this->hasExport) {
-            $this->run();
-        }
+        //  Start Main Process
+        $this->main();
     }
 
-    private function run() {
-        $this->checkPage();
-        $this->processExports();
-    }
-
+   /**
+     * Set variables from Project Settings 
+     *
+     * @return void
+     */
     private function initialize() {
 
         //  Download 
@@ -109,11 +111,44 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $this->hasExportMailForAutomatic = ($hasExportMail == 1 || $hasExportMail == 2) ? true : false;
         $this->hasExportMailForManual = ($hasExportMail == 1 || $hasExportMail == 3) ? true : false;
 
-        //  General 
+        //  Any
         $this->hasExport = $hasExportDownload ||  $hasExportMail;
-        $this->isExportActive = $this->getProjectSetting("is-export-active");        
+
+        //  per Submit
+        $this->isExportActive = $this->getProjectSetting("is-export-active");
+        
 
     }
+
+   /**
+     * Main Process of the module
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */        
+    private function main() {
+
+        //  If Exports are active
+        if( $this->hasExport ) {
+
+            $this->checkPage();
+
+            //  If Page is relevant
+            if( $this->isPageBase ) {
+
+                //  Include Javascript
+                $this->includeJavascript();
+
+                //  Prepare Report
+                $this->prepareReport();
+
+                //  Process Export
+                $this->processExport();
+            }
+        }
+        
+    }    
 
    /**
      * Check Pages and set Indicators
@@ -124,48 +159,27 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */    
     private function checkPage() {
 
-        if(strpos(PAGE, "Design/online_designer.php") !== false || strpos(PAGE, "Design/draft_mode_notified.php") !== false) {
+        if( $this->isPage("Design/online_designer.php") || $this->isPage("Design/draft_mode_notified.php") ) {
             $this->isPageBase = true;
         }
 
-        if(strpos(PAGE, "Design/online_designer.php") !== false && isset($_GET['msg']) && $_GET['msg'] == "autochangessaved" ) {
+        if( $this->isPage("Design/online_designer.php") && isset($_GET['msg']) && $_GET['msg'] == "autochangessaved" ) {
             $this->isPageApprovedAutomatic = true;
         }
 
-        if(strpos(PAGE, "Design/draft_mode_notified.php") !== false && isset($_GET['action']) && $_GET["action"] == "approve" ) {
+        if( $this->isPage("Design/draft_mode_notified.php") && isset($_GET['action']) && $_GET["action"] == "approve" ) {
             $this->isPageApprovedManual = true;
         }
 
     }
 
-    private function processExports() {
-
-        if( $this->isPageBase ) {
-
-            //  Prepare Report Data
-            $this->prepareReportData();
-
-            //  Include Javascript
-            $this->includeJavascript();
-
-            //  Handle Emails
-            $this->handleEmails();
-
-        }
-    }
-
-    private function handleEmails() {
-
-        if($this->isExportActive && $this->hasChanges) {
-
-            if( $this->isPageApprovedAutomatic && $this->hasExportDownloadForAutomatic || $this->isPageApprovedManual && $this->hasExportDownloadForManual) {
-
-                $this->sendMail();
-
-            }
-        }
-    }
-
+   /**
+     * Include Javascript
+     *
+     * @since 1.0.0
+     *
+     * @return void
+     */
     private function includeJavascript() {
         ?>
         <script src="<?php print $this->getUrl('js/main.js'); ?>"></script>
@@ -174,23 +188,83 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 STPH_exportDataDictionaryChanges.requestHandler = "<?= $this->getUrl("requestHandler.php") ?>";
                 $(document).ready(function(){
                     STPH_exportDataDictionaryChanges.initSwitch();
-                });
-                <?php if( $this->isExportActive && $this->hasChanges ): ?>
-                    <?php if( $this->isPageApprovedAutomatic && $this->hasExportDownloadForAutomatic ):?>
-                STPH_exportDataDictionaryChanges.initDownloadForAutomatic();
-                    <?php endif;?>
-                    <?php if( $this->isPageApprovedManual && $this->hasExportDownloadForManual ):?>
-                STPH_exportDataDictionaryChanges.initDownloadForManual();
-                    <?php endif;?>
-                <?php endif;?>
-          
+                });          
             });
         </script>        
+        <?php
+    }    
+
+   /**
+     * Process Exports by preparing Report Data, sending Emails and finally including Javascript.
+     *
+     * @return void
+     * 
+     * @since 1.0.0
+     */        
+    private function processExport() {
+
+        if($this->isExportActive && $this->hasChanges) {
+            
+            //  Handle Emails
+            $this->processEmail();
+
+            //  Include Javascript
+            $this->processDownload();
+
+        }
+
+    }
+
+   /**
+     * Process Email
+     *
+     * @return void
+     * 
+     * @since 1.0.0
+     */      
+    private function processEmail() {
+
+        $isEmailActive = $this->isPageApprovedAutomatic && $this->hasExportMailForAutomatic || $this->isPageApprovedManual && $this->hasExportMailForManual;
+
+        if( $isEmailActive ) {
+            $this->sendMail();
+        }
+    }
+
+
+
+    
+   /**
+     * Process Download.
+     *
+     * @return void
+     * 
+     * @since 1.0.0
+     */      
+    private function processDownload() {
+        ?>
+        <script> 
+            $(function() {
+            <?php if( $this->isPageApprovedAutomatic && $this->hasExportDownloadForAutomatic ):?>
+                STPH_exportDataDictionaryChanges.initDownloadForAutomatic();
+            <?php endif;?>
+            <?php if( $this->isPageApprovedManual && $this->hasExportDownloadForManual ):?>
+                STPH_exportDataDictionaryChanges.initDownloadForManual();
+            <?php endif;?>
+            });
+        </script>
         <?php
         
     }
 
-    private function prepareReportData() {
+   /**
+     * Prepare Report.
+     *
+     * @return void
+     * 
+     * @since 1.0.0
+     */        
+    private function prepareReport() {
 
         if($this->isPageApprovedAutomatic || $this->isPageApprovedManual) {
 
@@ -217,7 +291,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      * Send email to recipient
      *
      * @return void
-     * @uses PHPMailer\PHPMailer\PHPMailer
      * 
      * @since 1.0.0 
      */
@@ -459,6 +532,18 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
     }
 
+    /**
+     * Get filename with Project ID and Date
+     * 
+     * @return string
+     * 
+     * @since 1.0.0
+     */        
+    private function getFilename() {
+        return "DataDictionaryChanges_".PROJECT_ID."_".date("Y-m-d_H-i-s").".csv";
+    }    
+
+    //  API Handles
 
     /**
      * Get module configuration setting "active-auto-download" and returns its value in json
@@ -468,7 +553,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      *
      * @return void
      */
-    public function getExportActiveState() {
+    public function handleGetExportActive() {
         header('Content-Type: application/json; charset=UTF-8');
         $value = $this->getProjectSetting("is-export-active");
         echo json_encode(
@@ -484,7 +569,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      * @param string $checked
      * @return void
      */
-    public function toggleExportActive($checked) {
+    public function handleToggleExportActive($checked) {
 
         if($checked === "true") {
            $this->setProjectSetting("is-export-active", true);
@@ -501,14 +586,14 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     }
 
     /**
-     * Get CSV as File Download
+     * Stream CSV File to Browser
      * Called from RequestHandler via Ajax
      *
      * @since 1.0.0
      *
      * @return void
      */
-    public function getDownload() {
+    public function handleDownload() {
 
         $report = json_decode($this->getProjectSetting("storage"), true);
         $filename = $this->getFilename();
@@ -539,16 +624,5 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             http_response_code(500);
             die("There was an error while preparing the download. Please check the log.");
         }
-    }
-
-    /**
-     * Get filename with Project ID and Date
-     * 
-     * @return string
-     * 
-     * @since 1.0.0
-     */        
-    private function getFilename() {
-        return "DataDictionaryChanges_".PROJECT_ID."_".date("Y-m-d_H-i-s").".csv";
     }
 }

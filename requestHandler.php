@@ -6,14 +6,14 @@
 if ($_REQUEST['action'] == 'toggleActive') {
 
     $checked = htmlspecialchars($_POST["checked"]);
-    $module->toggleExportActive($checked);
+    $module->handleToggleExportActive($checked);
 
 }
 elseif($_REQUEST['action'] == 'getActiveState') {
-    $module->getExportActiveState();
+    $module->handleGetExportActive();
 }
 elseif($_REQUEST['action'] == 'download') {
-    $module->getDownload();
+    $module->handleDownload();
 }
 
 else {
