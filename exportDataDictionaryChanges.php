@@ -230,9 +230,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             $this->sendMail();
         }
     }
-
-
-
     
    /**
      * Process Download.
@@ -296,7 +293,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */
     private function sendMail() {
 
-        $csv = $this->getCSV( $this->report );        
+        $csv = $this->streamCSV( $this->report );        
         $filename = $this->getFilename();
 
             try {
@@ -428,10 +425,10 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                     
                     if ($attr != $old_value)
                     {
-                        $value = $attr ? $attr : "";
+                        //$value = $attr ? $attr : " ";
                         $old_value = $old_value ? $old_value : "";
                         $changeHistory[ $i ] = $old_value;
-                    }
+                    } 
                 }
 
                 $metadata["change_date"] = $changeDate;
@@ -478,58 +475,52 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
        return $report;
     }
 
+
     /**
-     * Generate CSV from report
-     *
+     * Stream CSV from temp
+     * https://stackoverflow.com/a/31118307/3127170
      * 
-     * @param array $report 
+     * @param array $report
      * @return string
-     *
+     * 
      * @since 1.0.0
-     */
-    private function getCSV($report){
+     */    
+    public function streamCSV($report) {
 
-        $csv = "";
-
-        //  Write headers
         $headers = array_keys( current($report) );
-        $csv = implode($headers, ", ") . PHP_EOL;
-
-
+        
+        // Write to memory (unless buffer exceeds 2mb when it will write to /tmp)
+        $fp = fopen('php://temp', 'w+');      
+        
+        fputcsv($fp, $headers);
         //  Write fields
         foreach ($report as $key => $row) {
-            
+    
             $line = "";
+            $csv_row = [];
 
-            foreach ($row as $key => $column) {                
+            foreach ($row as $key => $column) {            
+                $value = "";
 
                 if( is_array($column) ) {
-                  
-                    $value = "";
-                    foreach ($column as $key => $item) {
-                        
-                        $value .= "[".$key.":".$item ."]";
-                        
+                    
+                    foreach ($column as $key => $item) {                       
+                        $value .= $key.":".$item . "\r\n";                    
                     }
                     
                 } else {
                     $value = $column;
-                }
-                
-                //  Replace commas & escape linebreaks so it does not break our CSV!!!
-                $value = str_replace( ',' , '-', $value  );
-                $value = str_replace( '\n' , '\\n', $value  );
-                $line .=  $value .  ", ";
-                
-
+                }                
+                $csv_row[] = $value;
             }
-
-            $csv .= $line . PHP_EOL;
-            
+            fputcsv($fp, $csv_row);     
         }
 
-        return $csv;
-
+        rewind($fp); // Set the pointer back to the start
+        $csv_contents = stream_get_contents($fp); // Fetch the contents of our CSV
+        fclose($fp); // Close our pointer and free up memory and /tmp space
+        
+        return $csv_contents;
     }
 
     /**
@@ -611,7 +602,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 throw new \Exception('File open failed.');
             }
 
-            if( !fwrite( $fp, $this->getCSV($report) )) {
+            if( !fwrite( $fp, $this->streamCSV($report) )) {
                 throw new \Exception('File write failed.');                
             };
 
