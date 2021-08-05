@@ -593,7 +593,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      *
      * @return void
      */
-    public function handleDownload() {
+    public function handleDownloadCSV() {
 
         $report = json_decode($this->getProjectSetting("storage"), true);
         $filename = $this->getFilename();

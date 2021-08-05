@@ -3,17 +3,17 @@
 
 //  This file serves as a handler for all Front-end Ajax Requests
 
-if ($_REQUEST['action'] == 'toggleActive') {
+if ($_REQUEST['action'] == 'toggleExportActive') {
 
     $checked = htmlspecialchars($_POST["checked"]);
     $module->handleToggleExportActive($checked);
 
 }
-elseif($_REQUEST['action'] == 'getActiveState') {
+elseif($_REQUEST['action'] == 'getExportActive') {
     $module->handleGetExportActive();
 }
-elseif($_REQUEST['action'] == 'download') {
-    $module->handleDownload();
+elseif($_REQUEST['action'] == 'downloadCSV') {
+    $module->handleDownloadCSV();
 }
 
 else {

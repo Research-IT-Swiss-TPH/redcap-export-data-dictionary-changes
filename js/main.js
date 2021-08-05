@@ -23,7 +23,7 @@ STPH_exportDataDictionaryChanges.initSwitch = function() {
             $(".ui-dialog-content").append(html);
 
             //  Set initial state of "is-export-active"
-            $.get( STPH_exportDataDictionaryChanges.requestHandler + "&action=getActiveState")
+            $.get( STPH_exportDataDictionaryChanges.requestHandler + "&action=getExportActive")
             .done(function(response){
                 var state = response.state;
                 var input = $("#autoDownloadSwitch");
@@ -46,7 +46,7 @@ STPH_exportDataDictionaryChanges.initSwitch = function() {
             $("#autoDownloadSwitch").on("click", () => { 
                 var checked = $(this).find("input").is(":checked");                                
                 //  Trigger Ajax Request: setProjectSetting("active-auto-download")    
-                $.post( STPH_exportDataDictionaryChanges.requestHandler + "&action=toggleActive", {checked:checked})
+                $.post( STPH_exportDataDictionaryChanges.requestHandler + "&action=toggleExportActive", {checked:checked})
                 .done(function(response){
                     STPH_exportDataDictionaryChanges.setStateMsg(response);
                     //console.log(response.message)
@@ -123,7 +123,7 @@ STPH_exportDataDictionaryChanges.appendDownload = function(target) {
 //  https://stackoverflow.com/a/23797348/3127170
 STPH_exportDataDictionaryChanges.triggerAJAXDownload = function() {
 
-    $.get( STPH_exportDataDictionaryChanges.requestHandler + "&action=download" )
+    $.get( STPH_exportDataDictionaryChanges.requestHandler + "&action=downloadCSV" )
      .done( function(response, status, xhr){
         var blob = new Blob([response], { type: 'text/csv;charset=utf-8;' });
         // check for a filename
