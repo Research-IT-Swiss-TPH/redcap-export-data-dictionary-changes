@@ -7,15 +7,8 @@ Install the module from REDCap module repository and enable over Control Center.
 
 ## Configuration
 
-- Setting 1: Do this for that
-- Setting 2: Do this for that
-
-## Roadmap
-
-- Feature 1
-- Feature 2
-
-## Developer Notice
+- Enable Download: Configure Downloads for approval modes.
+- Enable Mail: Configure Emails for approval modes.
 
 ## Changelog
 

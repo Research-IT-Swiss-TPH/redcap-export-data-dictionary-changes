@@ -3,7 +3,7 @@
 
     "namespace": "STPH\\exportDataDictionaryChanges", 
 
-    "description": "Another module made with create-redcap-module.",
+    "description": "Export recent changes of a REDCap Data Dictionary through automated Downloads or Emails.",
 
     "documentation": "README.md",
 
@@ -23,17 +23,16 @@
 
     "enable-every-page-hooks-on-system-pages": false,
 
-    "links":{},
-
-    "no-auth-pages": [],
-
-    "system-settings": [],
-
     "project-settings": [
+        {
+            "key": "descriptive-text",
+            "name": "<b>Note:</b> Export types and Approval modes<br>Different export types can be configured independently for different modes of approval.<br><br><i>Automatic Approval</i>  Changes are not critical and are beeing approved automatically.<br><i>Manual Approval</i>  Changes are critical and have to be approved manually by users with higher permissions.",
+            "type": "descriptive"
+         },
         {
             "key": "has-export-download",
             "type": "dropdown",
-            "name": "<b>Automatic Downloads</b><br>Enable automatic Downloads? <br><i>An automatic download will start after approval, if Data Dictionary Export was requested during submission.</i>",
+            "name": "<b>Downloads</b><br>Enable Downloads after approval? <br><i>A download of a CSV will start after approval, if Data Dictionary Export was requested during submission</i>",
             "choices": [
 				{
 					"name" : "Disabled",
@@ -56,7 +55,7 @@
         {
             "key": "has-export-mail",
             "type": "dropdown",
-            "name": "<b>Automatic Emails</b><br>Enable automatic Emails? <br><i>An automatic email will be sent to the submission author, if Data Dictionary Export was request during submission.</i>",
+            "name": "<b>Emails</b><br>Enable Emails after approval? <br><i>An email will be sent to the submission author containing the attached CSV, if Data Dictionary Export was request during submission</i>",
             "choices": [
 				{
 					"name" : "Disabled",
@@ -88,10 +87,8 @@
         }
     ],
 
-    "crons": [],
-
     "compatibility": {
-        "php-version-min": "5.4.0",
-        "redcap-version-min": "8.0.0"
+        "php-version-min": "7.2.0",
+        "redcap-version-min": "10.0.0"
     }
  }
