@@ -15,3 +15,4 @@ Install the module from REDCap module repository and enable over Control Center.
 Version | Description
 ------- | --------------------
 v1.0.0  | Initial release.
+v1.0.1  | Set $mail->from over system settings.
