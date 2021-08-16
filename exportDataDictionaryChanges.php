@@ -303,9 +303,13 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 $mail->CharSet = 'UTF-8';
                 $mail->isHTML(true);        //Set email format to HTML
     
-    
-                // Recipient
-                $mail->setFrom('from@example.com', 'Mailer');
+                //  From
+                $config = \System::getConfigVals();
+                $name = $config["homepage_contact"];
+                $email = $config["homepage_contact_email"];                
+                $mail->setFrom($email, $name);
+
+                // Recipient            
                 $mail->addAddress($this->user->user_email, $this->user->user_firstname . ' ' . $this->user->user_lastname);
     
                 // Content
