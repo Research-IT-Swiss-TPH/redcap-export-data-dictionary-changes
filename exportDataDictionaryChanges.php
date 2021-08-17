@@ -159,7 +159,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */    
     private function checkPage() {
 
-        if( $this->isPage("Design/online_designer.php") || $this->isPage("Design/draft_mode_notified.php") ) {
+        if( $this->isPage("Design/online_designer.php") || $this->isPage("Design/draft_mode_notified.php") || $this->isPage("Design/data_dictionary_upload.php")) {
             $this->isPageBase = true;
         }
 
