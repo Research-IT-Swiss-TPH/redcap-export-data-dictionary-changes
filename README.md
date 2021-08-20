@@ -17,3 +17,4 @@ Version | Description
 v1.0.0  | Initial release.
 v1.0.1  | Set $mail->from over system settings.
 v1.0.2  | Add 'data_dictionary_upload.php' to export routes.
+v1.0.3  | Fix UTF-8 encoding.
