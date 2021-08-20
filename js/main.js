@@ -125,7 +125,7 @@ STPH_exportDataDictionaryChanges.triggerAJAXDownload = function() {
 
     $.get( STPH_exportDataDictionaryChanges.requestHandler + "&action=downloadCSV" )
      .done( function(response, status, xhr){
-        var blob = new Blob([response], { type: 'text/csv;charset=utf-8;' });
+        var blob = new Blob(["\uFEFF" + response], { type: 'text/csv;charset=utf-8;' });
         // check for a filename
         var filename = "";
         var disposition = xhr.getResponseHeader('Content-Disposition');
