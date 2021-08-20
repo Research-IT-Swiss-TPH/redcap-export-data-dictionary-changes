@@ -494,8 +494,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $headers = array_keys( current($report) );
         
         // Write to memory (unless buffer exceeds 2mb when it will write to /tmp)
-        $fp = fopen('php://temp', 'w+');      
-        
+        $fp = fopen('php://temp', 'w+');
+       
         fputcsv($fp, $headers);
         //  Write fields
         foreach ($report as $key => $row) {
@@ -509,7 +509,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 if( is_array($column) ) {
                     
                     foreach ($column as $key => $item) {                       
-                        $value .= $key.":".$item . "\r\n";                    
+                        $value .= $key.":".$item . PHP_EOL;                    
                     }
                     
                 } else {
@@ -520,7 +520,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             fputcsv($fp, $csv_row);     
         }
 
-        rewind($fp); // Set the pointer back to the start
+        rewind($fp); // Set the pointer back to the start        
         $csv_contents = stream_get_contents($fp); // Fetch the contents of our CSV
         fclose($fp); // Close our pointer and free up memory and /tmp space
         
@@ -596,12 +596,17 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         //  Set CSV File Headers
         header('Content-Description: File Transfer');
         header('Content-Type: application/csv');
+        //header('Content-Encoding: UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
 
         //  Handle file generation
         try {
             
             $fp = fopen('php://output', 'w+');
+
+            //  add BOM to fix UTF-8 in Excel https://stackoverflow.com/a/21988713/3127170            
+            //fputs($fp, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) )); //  BOM added over JS because called over AJAX, see main.js:128
+
             if ( !$fp ) {
                 throw new \Exception('File open failed.');
             }
@@ -613,6 +618,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             if( !fclose($fp) ) {
                 throw new \Exception('File close failed.');                
             };
+
+            fclose($fp);
 
         } catch(\Exception $e) {
             \REDCap::logEvent( $this->moduleName . " - Error: ", $e->getMessage(), null, null, null, PROJECT_ID );
