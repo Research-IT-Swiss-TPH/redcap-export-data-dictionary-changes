@@ -495,6 +495,9 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         
         // Write to memory (unless buffer exceeds 2mb when it will write to /tmp)
         $fp = fopen('php://temp', 'w+');
+
+        //  add BOM to fix UTF-8 in Excel https://stackoverflow.com/a/21988713/3127170            
+        fputs($fp, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) ));     
        
         fputcsv($fp, $headers);
         //  Write fields
@@ -603,9 +606,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         try {
             
             $fp = fopen('php://output', 'w+');
-
-            //  add BOM to fix UTF-8 in Excel https://stackoverflow.com/a/21988713/3127170            
-            //fputs($fp, $bom =( chr(0xEF) . chr(0xBB) . chr(0xBF) )); //  BOM added over JS because called over AJAX, see main.js:128
 
             if ( !$fp ) {
                 throw new \Exception('File open failed.');
