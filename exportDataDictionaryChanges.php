@@ -154,7 +154,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                     $this->processExport();
                 }
                 else {
-
+                    $this->includeAlert();
                 }
             }
          }        
