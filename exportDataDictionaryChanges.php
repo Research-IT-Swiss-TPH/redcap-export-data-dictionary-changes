@@ -12,7 +12,7 @@ if( $GLOBALS["is_development_server"] && file_exists("vendor/autoload.php")){
 }
 
 
-// Declare your module class, which must extend AbstractExternalModule 
+// Declare your module class, which must extend AbstractExternalModule
 class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModule {
 
     /** @var string */
@@ -43,6 +43,9 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     private $isPageApprovedManual;
 
     /** @var bool */
+    private $isProjectInProd;
+
+    /** @var bool */
     private $hasChanges;
     /** @var bool */
     private $isAjaxRequest;    
@@ -69,6 +72,8 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
         $this->isPageBase = false;
         $this->isPageApprovedAutomatic = false;
         $this->isPageApprovedManual = false;
+
+        $this->isProjectInProd = false;
 
         //  Objects used in methods
         $this->report = [];
@@ -128,28 +133,33 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      * @return void
      */        
     private function main() {
-
         //  If Exports are active
         if( $this->hasExport ) {
 
+            $this->checkProjectState();
             $this->checkPage();
 
             //  If Page is relevant
             if( $this->isPageBase ) {
 
-                //  Include Javascript
-                $this->includeJavascript();
+                //  If Prroject is moved to Production
+                if($this->isProjectInProd) {
+                    //  Include Javascript
+                    $this->includeJavascript();
 
-                //  Prepare Report
-                $this->prepareReport();
+                    //  Prepare Report
+                    $this->prepareReport();
 
-                //  Process Export
-                $this->processExport();
+                    //  Process Export
+                    $this->processExport();
+                }
+                else {
+
+                }
             }
-        }
-        
-    }    
-
+         }        
+    }
+    
    /**
      * Check Pages and set Indicators
      *
@@ -173,6 +183,24 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
 
     }
 
+    /**
+     * Check Project State and set variable $isProjectInProd
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */  
+    private function checkProjectState() {
+        
+        $pid = $_GET["pid"];       
+        if( !empty($pid) && !($this->getProjectStatus($pid) == "DEV")) {
+            $this->isProjectInProd = true;        
+        } else {
+            $this->isProjectInProd = false;
+        }
+
+    }
+
    /**
      * Include Javascript
      *
@@ -192,7 +220,25 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
             });
         </script>        
         <?php
-    }    
+    }
+  
+   /**
+     * Include Alert when Project is not in Production
+     *
+     * @since 1.1.0
+     *
+     * @return void
+     */    
+    private function includeAlert(){
+        ?>
+        <script>
+            $(function() {
+                var html = '<div style="max-width:800px;margin:2px 0 2px;border-color:#ffeeba!important; " class="alert alert-warning" role="alert">You have enabled <b><?= $this->getModuleName() ?></b> module, but your project is not in Production mode. Please <i>move project to production</i> in Project Setup settings.</div>';
+                $("#subheader").after(html);
+            });
+        </script>
+        <?php        
+    }
 
    /**
      * Process Exports by preparing Report Data, sending Emails and finally including Javascript.
@@ -423,9 +469,10 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 $changeHistory = [];
                 foreach ($metadata as  $i => $attr ) {
 
-                    $attr = strip_tags($attr);
+                    $attr = trim($attr);                    
 
-                    $old_value = strip_tags( $lastDataDictionary[$field][$i] );
+                    //$old_value = strip_tags( $lastDataDictionary[$field][$i] );
+                    $old_value = trim($lastDataDictionary[$field][$i]);
                     
                     if ($attr != $old_value)
                     {
@@ -446,6 +493,9 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 $mod_fields[$field] = $metadata;
             }
         }
+
+        //dump($mod_fields["income"]);
+
 
         //  Check for deleted fields 
         foreach ($lastDataDictionary as $field => $metadata) {
