@@ -542,6 +542,10 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
     public function streamCSV($report) {
 
         $headers = array_keys( current($report) );
+
+        $separator_setting = $this->getProjectSetting("column-separator");
+        ($separator_setting == NULL ) ? $separator_string = PHP_EOL : $separator_string = $separator_setting;
+
         
         // Write to memory (unless buffer exceeds 2mb when it will write to /tmp)
         $fp = fopen('php://temp', 'w+');
@@ -562,7 +566,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 if( is_array($column) ) {
                     
                     foreach ($column as $key => $item) {                       
-                        $value .= $key.":".$item . PHP_EOL;                    
+                        $value .= $key.":".$item . $separator_string;                    
                     }
                     
                 } else {

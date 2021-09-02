@@ -76,6 +76,11 @@
             ]
         },
         {
+            "key": "column-separator",
+            "name": "<b>Custom Column Separator</b><br>Use a custom string to separate columns inside Change History Column. <i>Default is End of Line</i>",
+            "default": null
+        },
+        {
             "key": "is-export-active",
             "type": "checkbox",            
             "hidden": true
