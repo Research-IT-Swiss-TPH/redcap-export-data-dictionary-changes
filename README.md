@@ -19,3 +19,4 @@ v1.0.1  | Set $mail->from over system settings.
 v1.0.2  | Add 'data_dictionary_upload.php' to export routes.
 v1.0.3  | Fix UTF-8 encoding.
 v1.1.0  | Minor fix and additional check for project state.
+v1.1.1  | Add custom separator setting & feature.
