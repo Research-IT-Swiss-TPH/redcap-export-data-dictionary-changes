@@ -673,8 +673,6 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
                 throw new \Exception('File close failed.');                
             };
 
-            fclose($fp);
-
         } catch(\Exception $e) {
             \REDCap::logEvent( $this->moduleName . " - Error: ", $e->getMessage(), null, null, null, PROJECT_ID );
             http_response_code(500);
