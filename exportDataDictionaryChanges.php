@@ -192,7 +192,7 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */  
     private function checkProjectState() {
         
-        $pid = $_GET["pid"];       
+        $pid = htmlentities($_GET["pid"], ENT_QUOTES);
         if( !empty($pid) && !($this->getProjectStatus($pid) == "DEV")) {
             $this->isProjectInProd = true;        
         } else {
@@ -385,15 +385,15 @@ class exportDataDictionaryChanges extends \ExternalModules\AbstractExternalModul
      */  
     private function getRevisions() {
 
-        $pid = $_GET["pid"];
+        $pid = htmlentities($_GET["pid"], ENT_QUOTES);
         $previous_versions = array();
         $sql = "select p.pr_id, p.ts_approved,p.ts_req_approval, p.ui_id_requester, p.ui_id_approver
                 from redcap_metadata_prod_revisions p                     
-                where p.project_id = $pid and p.ts_approved is not null order by p.pr_id";
+                where p.project_id = ? and p.ts_approved is not null order by p.pr_id";
 
         $revisions = [];                    
 
-        if ($result = $this->query($sql, [])) {
+        if ($result = $this->query($sql, $pid)) {
             while ($row = $result->fetch_object()) {
                 $revisions[] = $row;
             }
